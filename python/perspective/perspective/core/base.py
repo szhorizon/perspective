@@ -15,6 +15,22 @@ from .schema import validate_schema
 
 
 class PerspectiveBaseMixin(HasTraits):
+    # Interface with PerspectiveManager API
+    table_name = Unicode(allow_none=True).tag(sync=True)
+    message_to_manager = Dict(default_value={}).tag(sync=True)
+    message_from_manager = Dict(default_value={}).tag(sync=True)
+
+    # PerspectiveViewer interface
+    plugin = Unicode('hypergrid').tag(sync=True)
+    columns = List(default_value=[]).tag(sync=True)
+    row_pivots = List(trait=Unicode(), default_value=[]).tag(sync=True, o=True)
+    column_pivots = List(trait=Unicode(), default_value=[]).tag(sync=True)
+    aggregates = Dict(trait=Unicode(), default_value={}).tag(sync=True)
+    sort = List(default_value=[]).tag(sync=True)
+    filters = List(trait=List, default_value=[]).tag(sync=True)
+
+
+class PerspectiveBaseMixin2(HasTraits):
     '''Perspective Base Mixin'''
     # Data (private)
     _data = Union((List(default_value=[]), Dict(default_value={}))).tag(sync=True)

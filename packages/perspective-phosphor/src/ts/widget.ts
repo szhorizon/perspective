@@ -8,6 +8,7 @@
  */
 /**************************/
 /* perspective components */
+import "@finos/perspective";
 import "@finos/perspective-viewer";
 import "@finos/perspective-viewer-hypergrid";
 import "@finos/perspective-viewer-d3fc";
@@ -74,6 +75,8 @@ export type PerspectiveWidgetOptions = {
  * @param {boolean} wrap - wrap data in list
  * @param {boolean} delete_ - delete existing data on new data
  */
+
+// TODO: rewrite
 export
     class PerspectiveWidget extends Widget {
     constructor(name: string = 'Perspective',
@@ -86,7 +89,7 @@ export
         this.id = `${name}-` + _increment;
         _increment += 1;
 
-        this._load(options);
+        //this._load(options);
     }
 
 
@@ -166,6 +169,10 @@ export
         this._displayed = false;
     }
 
+    _load_table(table: any) {
+        this.pspNode.load(table);
+    }
+
     /**********************/
     /* Phosphor Overrides */
     /**********************/
@@ -241,7 +248,7 @@ export
             if(this.data.length === 0 && Object.keys(this.data).length === 0){
                 return
             }
-            this._render();
+            //this._render();
             this._displayed = true;
         } else if (this.isAttached){
             this.pspNode.notifyResize();

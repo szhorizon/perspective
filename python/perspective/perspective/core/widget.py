@@ -5,10 +5,11 @@
 # This file is part of the Perspective library, distributed under the terms of
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
+from random import random
 from ipywidgets import Widget
 from traitlets import Unicode
 from .base import PerspectiveBaseMixin
-from .data import type_detect
+from ..table import Table, PerspectiveManager
 
 
 class PerspectiveWidget(PerspectiveBaseMixin, Widget):
@@ -24,84 +25,37 @@ class PerspectiveWidget(PerspectiveBaseMixin, Widget):
     _view_module_version = Unicode('^0.3.0').tag(sync=True)
     ############
 
+    '''
     def delete(self): self.send({'type': 'delete'})
 
     def update(self, data): self.send({'type': 'update', 'data': type_detect(data).data})
 
     def __del__(self): self.send({'type': 'delete'})
+    '''
 
-    def __init__(self,
-                 data,
-                 plugin='hypergrid',
-                 schema=None,
-                 columns=None,
-                 rowpivots=None,
-                 columnpivots=None,
-                 aggregates=None,
-                 sort=None,
-                 index='',
-                 limit=-1,
-                 computedcolumns=None,
-                 filters=None,
-                 plugin_config=None,
-                 settings=True,
-                 embed=False,
-                 dark=False,
-                 transfer_as_arrow=False,
-                 *args,
-                 **kwargs):
-        '''Render a perspective javascript widget in jupyter
-
-        Arguments:
-            data : dataframe/list/dict
-                The static or live datasource
-
-        Keyword Arguments:
-            plugin : str or Plugin
-                what plugin to use. available in the enum Plugin (default: {'hypergrid'})
-            columns : list of str
-                what columns to display
-            rowpivots : list of str
-                what names to use as rowpivots
-            columnpivots : list of str
-                what names to use as columnpivots
-            aggregates:  dict(str: str or Aggregate)
-                dictionary of name to aggregate type (either string or enum Aggregate)
-            index : str
-                columns to use as index
-            limit : int
-                row limit
-            computedcolumns : list of dict
-                computed columns to set on the perspective viewer
-            filters: list of list
-                list of filters to apply to columns
-            plugin_config: dict
-                configuration dictionary to pass to perspective plugin
-            settings : bool
-                display settings
-            embed : bool
-                embedded mode
-            dark : bool
-                use dark theme
-
+    def __init__(self, *args, **kwargs):
         '''
-        self.setup(data=data,
-                   plugin=plugin,
-                   schema=schema,
-                   columns=columns,
-                   rowpivots=rowpivots,
-                   columnpivots=columnpivots,
-                   aggregates=aggregates,
-                   sort=sort,
-                   index=index,
-                   limit=limit,
-                   computedcolumns=computedcolumns,
-                   filters=filters,
-                   plugin_config=plugin_config,
-                   settings=settings,
-                   embed=embed,
-                   dark=dark,
-                   transfer_as_arrow=transfer_as_arrow,
-                   *args,
-                   **kwargs)
+        Examples:
+            >>> widget = perspective.Widget(row_pivots=["a"], sort=[["a", "desc"]])
+        '''
+        self.manager = PerspectiveManager()
+        self.table_name = None
         super(PerspectiveWidget, self).__init__(*args, **kwargs)
+
+    def load(self, table_or_data_or_schema, **config):
+        ''' Load a `Table` or any of the data types/schemas supported by Perspective into the widget.
+
+        Examples:
+            >>> widget.load(tbl)
+            >>> widget.load(data, {"index": "a"})
+        '''
+        if not isinstance(table_or_data_or_schema, Table):
+            '''Create a new Table from user-provided data.'''
+            table = Table(table_or_data_or_schema, config.get("options", {}))
+        else:
+            table = table_or_data_or_schema
+        self.table_name = str(random())
+        self.manager.host_table(self.table_name, table)
+        print(self.table_name, self.manager, self.manager._tables)
+
+    # TODO: what is the 'onmessage' handler for traitlets?
