@@ -10,6 +10,8 @@
 const args = process.argv.slice(2);
 const resolve = require("path").resolve;
 const execSync = require("child_process").execSync;
+const fs = require("fs-extra");
+const mkdir = require("mkdirp");
 const execute = cmd => execSync(cmd, {stdio: "inherit"});
 
 const IS_DOCKER = process.env.PSP_DOCKER;
@@ -27,31 +29,21 @@ function docker(target = "perspective", image = "emsdk") {
 }
 
 try {
-    // install dependencies
-    let target = "perspective";
+    // copy C++ assets
+    mkdir(resolve(__dirname, "..", "python", "perspective", "cmake"));
+    fs.copySync(resolve(__dirname, "..", "cpp", "perspective"),
+        resolve(__dirname, "..", "python", "perspective"));
 
-    if (HAS_TARGET) {
-        const new_target = args[args.indexOf("--target") + 1];
-        if (VALID_TARGETS.includes(new_target)) {
-            target = new_target;
-        }
-    }
+    fs.copySync(resolve(__dirname, "..", "cmake"),
+        resolve(__dirname, "..", "python", "perspective", "cmake"));
 
     let cmd;
-    let pip_target = "";
-
     if (IS_DOCKER) {
-        pip_target = " --target=`pwd`";
-    }
-
-    let build_cmd = `python3 setup.py build`;
-
-    if (IS_DOCKER) {
-        cmd = `cd python/${target} && ${build_cmd}`;
+        cmd = `cd python/perspective && python3 setup.py build`;
         execute(`${docker(target, "python")} bash -c "${cmd}"`);
     } else {
-        const python_path = resolve(__dirname, "..", "python", target);
-        cmd = `cd ${python_path} && ${build_cmd}`;
+        const python_path = resolve(__dirname, "..", "python", "perspective");
+        cmd = `cd ${python_path} && python3 setup.py build`;
         execute(cmd);
     }
 } catch (e) {

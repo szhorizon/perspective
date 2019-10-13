@@ -105,3 +105,10 @@ ENV/
 .autoversion
 _depr
 docs/api
+
+# C++ build files
+cmake/
+obj/
+src/
+test/
+CMakeLists.txt
