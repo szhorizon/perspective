@@ -113,6 +113,9 @@ endif()
 
 if(PSP_WASM_BUILD)
 	message(WARNING "${Cyan}Building WASM binding${ColorReset}")
+	if(NOT DEFINED PSP_PYTHON_SRC)
+		set(PSP_CPP_SRC "${CMAKE_SOURCE_DIR}")
+	endif()
 else()
 	message(WARNING "${Cyan}Skipping WASM binding${ColorReset}")
 endif()
@@ -462,11 +465,8 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 
 		# Link against libarrow 0.15.0 in pyarrow directory
 		target_link_libraries(psp ${Boost_FILESYSTEM_LIBRARY})
-<<<<<<< HEAD
 		target_link_libraries(psp ${PYTHON_PYARROW_SHARED_LIBRARY})
 
-=======
->>>>>>> fix build outputs, build in place manually with cmake
 		target_link_libraries(psp ${PYTHON_LIBRARIES})
 		add_custom_command(TARGET psp POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:psp> ${PSP_PYTHON_SRC}/table/)
 
@@ -513,8 +513,7 @@ if (PSP_CPP_BUILD_TESTS)
 	if (WIN32)
 	  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 	endif()
-	# don't need to build gtest as theres one in rapidjson
-	# psp_build_dep("googletest" "${PSP_CMAKE_MODULE_PATH}/GTest.txt.in")
+	psp_build_dep("googletest" "${PSP_CMAKE_MODULE_PATH}/GTest.txt.in")
 
 	add_subdirectory(test)
 	add_custom_target(gcov

@@ -10,6 +10,7 @@ from setuptools.command.build_ext import build_ext
 from distutils.version import LooseVersion
 from codecs import open
 import io
+import logging
 import os
 import os.path
 import re
@@ -142,6 +143,7 @@ class PSPBuild(build_ext):
             subprocess.check_call([self.cmake_cmd, '--build', '.'] + build_args, cwd=self.build_temp, env=env, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             out = e.output.decode()
+            logging.error(out)
             if "The current CMakeCache.txt directory" not in out:
                 raise
 
