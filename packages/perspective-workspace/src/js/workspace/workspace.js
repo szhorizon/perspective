@@ -31,14 +31,14 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
     constructor(element, options = {}) {
         super({orientation: "horizontal"});
 
-        this.addClass("p-PerspectiveWorkspace");
+        this.addClass("perspective-workspace");
         this.dockpanel = new PerspectiveDockPanel("main", {enableContextMenu: false});
         this.detailPanel = new Panel();
         this.detailPanel.layout.fitPolicy = "set-no-constraint";
-        this.detailPanel.addClass("p-PerspectiveScrollPanel");
+        this.detailPanel.addClass("perspective-scroll-panel");
         this.detailPanel.addWidget(this.dockpanel);
         this.masterPanel = new DiscreteSplitPanel({orientation: "vertical"});
-        this.masterPanel.addClass("p-MasterPanel");
+        this.masterPanel.addClass("master-panel");
 
         this.dockpanel.layoutModified.connect(() => this.workspaceUpdated());
         this.masterPanel.layoutModified.connect(() => this.workspaceUpdated());
@@ -52,6 +52,8 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
         this.tables = new Map();
         this.commands = createCommands(this);
         this.menuRenderer = new MenuRenderer(this.element);
+
+        this.customCommands = [];
     }
 
     /*********************************************************************
@@ -180,25 +182,36 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
     }
 
     toggleMasterDetail(widget) {
-        if (widget.parent === this.dockpanel) {
+        const isGlobalFilter = widget.parent !== this.dockpanel;
+
+        this.element.dispatchEvent(
+            new CustomEvent("workspace-toggle-global-filter", {
+                detail: {
+                    widget,
+                    isGlobalFilter: !isGlobalFilter
+                }
+            })
+        );
+
+        if (isGlobalFilter) {
+            this.makeDetail(widget);
+        } else {
             if (this.dockpanel.mode === "single-document") {
                 this.toggleSingleDocument(widget);
             }
             this.makeMaster(widget);
-        } else {
-            this.makeDetail(widget);
         }
     }
 
     toggleSingleDocument(widget) {
         if (this.dockpanel.mode !== "single-document") {
-            widget.viewer.classList.add("p-Maximize");
+            widget.viewer.classList.add("widget-maximize");
             this.single_document_prev_layout = this.dockpanel.saveLayout();
             this.dockpanel.mode = "single-document";
             this.dockpanel.activateWidget(widget);
             widget.notifyResize();
         } else {
-            widget.viewer.classList.remove("p-Maximize");
+            widget.viewer.classList.remove("widget-maximize");
             this.dockpanel.mode = "multiple-document";
             this.dockpanel.restoreLayout(this.single_document_prev_layout);
         }
@@ -232,8 +245,12 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
      * Master/Detail methods
      */
 
-    makeMaster(widget) {
+    async makeMaster(widget) {
         widget.master = true;
+
+        if (widget.viewer.hasAttribute("settings")) {
+            await widget.toggleConfig();
+        }
 
         if (!this.masterPanel.isAttached) {
             this.detailPanel.close();
@@ -280,6 +297,13 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
         contextMenu.addItem({command: "workspace:export", args: {widget}});
         contextMenu.addItem({command: "workspace:copy", args: {widget}});
         contextMenu.addItem({command: "workspace:reset", args: {widget}});
+
+        if (this.customCommands.length > 0) {
+            contextMenu.addItem({type: "separator"});
+            this.customCommands.forEach(command => {
+                contextMenu.addItem({command, args: {widget}});
+            });
+        }
         return contextMenu;
     }
 
@@ -287,21 +311,33 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
         const menu = this.createContextMenu(widget);
         const tabbar = find(this.dockpanel.tabBars(), bar => bar.currentTitle.owner === widget);
 
-        widget.addClass("p-ContextFocus");
-        tabbar && tabbar.node.classList.add("p-ContextFocus");
-        this.element.classList.add("p-ContextMenu");
-        this.addClass("p-ContextMenu");
+        widget.addClass("context-focus");
+        widget.viewer.classList.add("context-focus");
+        tabbar && tabbar.node.classList.add("context-focus");
+        this.element.classList.add("context-menu");
+        this.addClass("context-menu");
 
         menu.aboutToClose.connect(() => {
-            widget.removeClass("p-ContextFocus");
-            tabbar && tabbar.node.classList.remove("p-ContextFocus");
-            this.element.classList.remove("p-ContextMenu");
-            this.removeClass("p-ContextMenu");
+            widget.removeClass("context-focus");
+            widget.viewer.classList.remove("context-focus");
+            tabbar && tabbar.node.classList.remove("context-focus");
+            this.element.classList.remove("context-menu");
+            this.removeClass("context-menu");
         });
 
         menu.open(event.clientX, event.clientY);
         event.preventDefault();
         event.stopPropagation();
+    }
+
+    _addContextMenuItem(item) {
+        this.customCommands.push(item.id);
+        this.commands.addCommand(item.id, {
+            execute: args => item.execute({widget: args.widget}),
+            label: item.label,
+            isVisible: args => item.isVisible({widget: args.widget}),
+            mnemonic: 0
+        });
     }
 
     /*********************************************************************
@@ -352,6 +388,14 @@ export class PerspectiveWorkspace extends DiscreteSplitPanel {
 
     _createWidget({title, table, config}) {
         const widget = new PerspectiveViewerWidget({title, table});
+        this.element.dispatchEvent(
+            new CustomEvent("workspace-new-view", {
+                detail: {
+                    config: config,
+                    widget
+                }
+            })
+        );
         widget.title.closable = true;
         this.element.appendChild(widget.viewer);
         this._addWidgetEventListeners(widget);
